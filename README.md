@@ -26,7 +26,7 @@ export OPENAI_API_KEY=<your api key>
 Then you can start a conversation with ChatGPT:
 
 ```
-chatgpt What is 2 + 2
+chatgpt what is 2 + 2
 ```
 
 You can also send multiline messages:

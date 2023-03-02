@@ -100,7 +100,7 @@ fn main() -> Result<(), Error> {
         model: "gpt-3.5-turbo".to_string(),
         messages,
     };
-    println!("{:?}", data);
+
     let mut headers = HeaderMap::new();
     headers.insert(
         AUTHORIZATION,

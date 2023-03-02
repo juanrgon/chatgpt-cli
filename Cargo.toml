@@ -2,7 +2,7 @@
 name = "chatgpt-cli"
 email = "jrg2156@gmail.com"
 authors = ["Juan Gonzalez"]
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 description = "Talk with ChatGPT from your terminal"
 license = "MIT"

@@ -64,7 +64,7 @@ fn main() -> Result<(), Error> {
     file.read_to_string(&mut chatlog_text)?;
 
     // get the messages from the chatlog. limit the total number of tokens to 3000
-    const MAX_TOKENS: i64 = 3000;
+    const MAX_TOKENS: i64 = 2000;
     let mut total_tokens: i64 = 0;
     let mut messages: Vec<Message> = vec![];
     let mut chatlog: Vec<Log> = vec![];

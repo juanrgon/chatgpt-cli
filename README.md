@@ -7,7 +7,7 @@ First you'll need to install the CLI:
 
 
 ```
-cargo install --git https://github.com/juanrgon/chatgpt-cli --branch main
+cargo install chatgpt-cli
 ```
 
 Then, you'll need to make sure your cargo bin directory is in your path. You can do this by adding the following to your `~/.bashrc` or `~/.zshrc`:

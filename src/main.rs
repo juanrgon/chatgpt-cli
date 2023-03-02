@@ -1,84 +1,148 @@
+use dirs;
 use reqwest::blocking::Client;
+use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
+use rustix::process;
 use serde::{Deserialize, Serialize};
-use serde_json;
-use std::env;
-use std::process::exit;
+use std::fs::OpenOptions;
+use std::{
+    env,
+    fs::{self},
+    io::{Error, Read},
+};
 
-#[derive(Serialize)]
-struct OpenAIRequest<'a> {
-    model: &'a str,
-    messages: Vec<OpenAIMessage<'a>>,
+#[derive(Serialize, Deserialize, Debug)]
+struct Log {
+    role: String,
+    content: String,
+    tokens: i64,
 }
 
-#[derive(Serialize)]
-struct OpenAIMessage<'a> {
-    role: &'a str,
-    content: &'a str,
-}
-
-#[derive(Deserialize)]
-struct OpenAIResponse {
-    choices: Vec<OpenAIChoice>,
-}
-
-#[derive(Deserialize)]
-struct OpenAIChoice {
-    message: OpenAIResponseMessage,
-}
-
-#[derive(Deserialize)]
-struct OpenAIResponseMessage {
+#[derive(Serialize, Deserialize, Debug)]
+struct Message {
+    /// serialize as "role" instead of "role"
+    role: String,
     content: String,
 }
+#[derive(Debug, Deserialize, Serialize)]
+struct OpenAIRequest {
+    #[serde(rename = "model")]
+    model: String,
+    #[serde(rename = "messages")]
+    messages: Vec<Message>,
+}
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    let prompt = args[1..].join(" ");
+fn main() -> Result<(), Error> {
+    // get OPENAI_API_KEY from environment variable
+    let key = "OPENAI_API_KEY";
+    let openai_api_key = env::var(key).expect(&format!("{} not set", key));
 
-    if prompt.is_empty() {
-        eprintln!("Error: missing prompt for OpenAI API.");
-        exit(1);
+    // get the prompt from the user
+    let args: Vec<String> = env::args().skip(1).collect();
+    let prompt = args.join(" ");
+
+    // load the chatlog for this terminal window
+    let chatlog_path = dirs::home_dir()
+        .expect("Failed to get home directory")
+        .join(".chatgpt")
+        .join(
+            process::getppid()
+                .expect("Failed to get parent process id")
+                .as_raw_nonzero()
+                .to_string(),
+        )
+        .join("chatlog.json");
+
+    fs::create_dir_all(chatlog_path.parent().unwrap())?;
+
+    let mut chatlog_text = String::new();
+    // create chatlog path if it doesn't exist
+
+    let mut file = OpenOptions::new()
+    .create(true) // create the file if it doesn't exist
+    .append(true) // don't overwrite the contents
+    .read(true)
+    .open(&chatlog_path)
+    .unwrap();
+
+    file.read_to_string(&mut chatlog_text)?;
+
+    // get the messages from the chatlog. limit the total number of tokens to 3000
+    const MAX_TOKENS: i64 = 3000;
+    let mut total_tokens: i64 = 0;
+    let mut messages: Vec<Message> = vec![];
+    let mut chatlog: Vec<Log> = vec![];
+
+    if !chatlog_text.is_empty() {
+        chatlog = serde_json::from_str(&chatlog_text)?;
+        for log in chatlog.iter().rev() {
+            if total_tokens + log.tokens > MAX_TOKENS {
+                continue;
+            }
+
+            total_tokens += log.tokens;
+            messages.push(Message {
+                role: log.role.clone(),
+                content: log.content.clone(),
+            });
+        }
     }
 
-    let api_key = match env::var("OPENAI_API_KEY") {
-        Ok(val) => val,
-        Err(_) => {
-            eprintln!("Error: OPENAI_API_KEY environment variable is not set.");
-            exit(1);
-        }
-    };
+    messages = messages.into_iter().rev().collect();
 
-    let request = OpenAIRequest {
-        model: "gpt-3.5-turbo",
-        messages: vec![OpenAIMessage {
-            role: "user",
-            content: prompt.as_str(),
-        }],
-    };
+    messages.push(Message {
+        role: "user".to_string(),
+        content: prompt.clone(),
+    });
 
+    // send the POST request to OpenAI
     let client = Client::new();
-
-    // Send the request to the OpenAI API
-    // and deserialize the response into a struct.
-    // If the request fails, the program will panic and print the response to the console.
+    let data = OpenAIRequest {
+        model: "gpt-3.5-turbo".to_string(),
+        messages,
+    };
+    println!("{:?}", data);
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        AUTHORIZATION,
+        format!("Bearer {}", openai_api_key).parse().unwrap(),
+    );
+    headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
+    let json_data = serde_json::to_string(&data)?;
     let response = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request)
+        .post("https://api.openai.com/v1/chat/completions".to_string())
+        .headers(headers)
+        .body(json_data)
         .send()
+        .unwrap()
+        .json::<serde_json::Value>()
         .unwrap();
 
-    let response_body = response.text().unwrap();
+    let prompt_tokens = response["usage"]["prompt_tokens"].as_i64().unwrap();
+    let answer_tokens = response["usage"]["completion_tokens"].as_i64().unwrap();
+    let answer = response["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap();
 
-    // Deserialize the response into a struct. If the deserialization fails, print the response to the console.
-    let openai_response: OpenAIResponse = match serde_json::from_str(&response_body) {
-        Ok(val) => val,
-        Err(_) => {
-            eprintln!("{}", response_body);
-            exit(1);
-        }
-    };
+    // println!("{}", response.json::<serde_json::Value>().expect("msg"));
 
-    println!("{}", openai_response.choices[0].message.content);
+    // Show the response from OpenAI
+    println!("{}", answer);
+
+    // save the new messages to the chatlog
+    chatlog.push(Log {
+        role: "user".to_string(),
+        content: prompt,
+        tokens: prompt_tokens,
+    });
+    chatlog.push(Log {
+        role: "assistant".to_string(),
+        content: answer.to_string(),
+        tokens: answer_tokens,
+    });
+
+    // write the chatlog to disk
+    let chatlog_text = serde_json::to_string(&chatlog)?;
+    fs::write(&chatlog_path, chatlog_text)?;
+
+    Ok(())
 }

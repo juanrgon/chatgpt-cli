@@ -36,6 +36,7 @@ chatgpt '''
     Make this sentence more sophisticated:
 
     I like to eat pizza
+    '''
 ```
 
 Your messages in each terminal window is saved `~/.chatgpt/{pid}/chatlog.json`. This means you can ask follow-up questions in a terminal window and start a new conversation by opening a new window.

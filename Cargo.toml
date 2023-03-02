@@ -7,7 +7,7 @@ edition = "2021"
 description = "Talk with ChatGPT from your terminal"
 license = "MIT"
 repository = "https://github.com/juanrgon/chatgpt-cli"
-keywords = ["chat", "gpt", "gpt-3", "ai", "artificial intelligence", "nlp", "natural language processing", "api", "cli", "command line interface"]
+keywords = ["chat", "gpt", "gpt-3", "ai", "artificial-intelligence", "nlp", "natural-language-processing", "api", "cli", "command-line-interface"]
 
 [[bin]]
 name = "chatgpt"

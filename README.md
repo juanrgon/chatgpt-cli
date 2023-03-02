@@ -25,7 +25,7 @@ chatgpt What is 2 + 2
 You can also send multiline messages:
 
 ```
-chatgpt '''
+chatgpt-cli '''
     Make this sentence more sophisticated:
 
     I like to eat pizza

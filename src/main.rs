@@ -54,11 +54,11 @@ fn main() -> Result<(), Error> {
     fs::create_dir_all(chatlog_path.parent().unwrap())?;
 
     let mut file = OpenOptions::new()
-    .create(true) // create the file if it doesn't exist
-    .append(true) // don't overwrite the contents
-    .read(true)
-    .open(&chatlog_path)
-    .unwrap();
+        .create(true) // create the file if it doesn't exist
+        .append(true) // don't overwrite the contents
+        .read(true)
+        .open(&chatlog_path)
+        .unwrap();
 
     let mut chatlog_text = String::new();
     file.read_to_string(&mut chatlog_text)?;
@@ -113,6 +113,18 @@ fn main() -> Result<(), Error> {
         .unwrap()
         .json::<serde_json::Value>()
         .unwrap();
+
+    // if the response is an error, print it and exit
+    match response["error"].as_object() {
+        None => response["error"].clone(),
+        Some(_) => {
+            println!(
+                "Received an error from OpenAI: {}",
+                response["error"]["message"].as_str().unwrap()
+            );
+            return Ok(());
+        }
+    };
 
     let prompt_tokens = response["usage"]["prompt_tokens"].as_i64().unwrap();
     let answer_tokens = response["usage"]["completion_tokens"].as_i64().unwrap();

@@ -19,7 +19,6 @@ struct Log {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Message {
-    /// serialize as "role" instead of "role"
     role: String,
     content: String,
 }

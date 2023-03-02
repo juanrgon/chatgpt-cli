@@ -123,8 +123,6 @@ fn main() -> Result<(), Error> {
         .as_str()
         .unwrap();
 
-    // println!("{}", response.json::<serde_json::Value>().expect("msg"));
-
     // Show the response from OpenAI
     println!("{}", answer);
 

@@ -53,9 +53,6 @@ fn main() -> Result<(), Error> {
 
     fs::create_dir_all(chatlog_path.parent().unwrap())?;
 
-    let mut chatlog_text = String::new();
-    // create chatlog path if it doesn't exist
-
     let mut file = OpenOptions::new()
     .create(true) // create the file if it doesn't exist
     .append(true) // don't overwrite the contents
@@ -63,6 +60,7 @@ fn main() -> Result<(), Error> {
     .open(&chatlog_path)
     .unwrap();
 
+    let mut chatlog_text = String::new();
     file.read_to_string(&mut chatlog_text)?;
 
     // get the messages from the chatlog. limit the total number of tokens to 3000

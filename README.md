@@ -5,7 +5,6 @@ Talk to ChatGPT from your terminal.
 
 First you'll need to install the CLI:
 
-
 ```
 cargo install chatgpt-cli
 ```
@@ -15,6 +14,14 @@ Then, you'll need to make sure your cargo bin directory is in your path. You can
 ```
 export PATH="$PATH:$HOME/.cargo/bin"
 ```
+
+Finally, you'll need a OPENAI API key (you can get one [here](https://platform.openai.com/account/api-keys)), and you'll need to export your API Key as an environment variable:
+
+
+```
+export OPENAI_API_KEY=<your api key>
+```
+
 
 Then you can start a conversation with ChatGPT:
 

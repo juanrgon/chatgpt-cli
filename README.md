@@ -39,4 +39,4 @@ chatgpt '''
     '''
 ```
 
-Your messages in each terminal window are saved to `~/.chatgpt/{terminal pid}/chatlog.json`. This means you can ask follow-up questions in a terminal window and start a new conversation by opening a new window.
+Your messages in each terminal window are saved to `~/.chatgpt/{OS boot time}/{terminal pid}/chatlog.json`. This means you can ask follow-up questions in a terminal window and start a new conversation by opening a new window.

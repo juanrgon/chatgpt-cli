@@ -3,12 +3,14 @@ use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use rustix::process;
 use serde::{Deserialize, Serialize};
+use sys_info::boottime;
 use std::fs::OpenOptions;
 use std::{
     env,
     fs::{self},
     io::{Error, Read},
 };
+
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Log {
@@ -39,10 +41,15 @@ fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().skip(1).collect();
     let prompt = args.join(" ");
 
+    // Get the boottime of the system
+    let boot_time = boottime().expect("Unable to get boot time");
+    let boot_time_since_unix_epoch = boot_time.tv_sec;
+
     // load the chatlog for this terminal window
     let chatlog_path = dirs::home_dir()
         .expect("Failed to get home directory")
         .join(".chatgpt")
+        .join(boot_time_since_unix_epoch.to_string())
         .join(
             process::getppid()
                 .expect("Failed to get parent process id")

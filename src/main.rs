@@ -1,6 +1,7 @@
 use dirs;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
+use std::time::Duration;
 use rustix::process;
 use serde::{Deserialize, Serialize};
 use sys_info::boottime;
@@ -100,8 +101,9 @@ fn main() -> Result<(), Error> {
 
     // send the POST request to OpenAI
     let client = Client::new();
+    let model = env::var("CHATGPT_CLI_MODEL").unwrap_or_else(|_| "gpt-3.5-turbo".to_string());
     let data = OpenAIRequest {
-        model: "gpt-3.5-turbo".to_string(),
+        model: model.to_string(),
         messages,
     };
 
@@ -112,8 +114,13 @@ fn main() -> Result<(), Error> {
     );
     headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
     let json_data = serde_json::to_string(&data)?;
+    let timeout_secs = env::var("CHATGPT_REQUEST_TIMEOUT_SECS")
+        .ok()
+        .and_then(|x| x.parse().ok())
+        .unwrap_or(10); // default value of 10 seconds
     let response = client
         .post("https://api.openai.com/v1/chat/completions".to_string())
+        .timeout(Duration::from_secs(timeout_secs))
         .headers(headers)
         .body(json_data)
         .send()

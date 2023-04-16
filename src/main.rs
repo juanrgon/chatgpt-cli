@@ -1,17 +1,17 @@
+use clap::Parser;
 use dirs;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
-use std::time::Duration;
 use rustix::process;
 use serde::{Deserialize, Serialize};
-use sys_info::boottime;
 use std::fs::OpenOptions;
+use std::time::Duration;
 use std::{
     env,
     fs::{self},
     io::{Error, Read},
 };
-
+use sys_info::boottime;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Log {
@@ -34,13 +34,20 @@ struct OpenAIRequest {
 }
 
 fn main() -> Result<(), Error> {
+    let args = CliArgs::parse();
+
     // get OPENAI_API_KEY from environment variable
     let key = "OPENAI_API_KEY";
     let openai_api_key = env::var(key).expect(&format!("{} not set", key));
 
     // get the prompt from the user
-    let args: Vec<String> = env::args().skip(1).collect();
-    let prompt = args.join(" ");
+    let prompt = args.prompt.join(" ");
+
+    // Get the model from the CLI argument, environment variable, or use the default value
+    let model = args
+        .model
+        .or_else(|| env::var("CHATGPT_CLI_MODEL").ok())
+        .unwrap_or_else(|| "gpt-3.5-turbo".to_string());
 
     // Get the boottime of the system
     let boot_time = boottime().expect("Unable to get boot time");
@@ -101,7 +108,6 @@ fn main() -> Result<(), Error> {
 
     // send the POST request to OpenAI
     let client = Client::new();
-    let model = env::var("CHATGPT_CLI_MODEL").unwrap_or_else(|_| "gpt-3.5-turbo".to_string());
     let data = OpenAIRequest {
         model: model.to_string(),
         messages,
@@ -166,4 +172,16 @@ fn main() -> Result<(), Error> {
     fs::write(&chatlog_path, chatlog_text)?;
 
     Ok(())
+}
+
+#[derive(Parser, Debug)]
+#[clap(version = "0.2.0", author = "Juan Gonzalez <jrg2156@gmail.com>")]
+struct CliArgs {
+    /// The prompt to send to ChatGPT
+    #[clap(name = "prompt")]
+    prompt: Vec<String>,
+
+    /// The ChatGPT model to use (default: gpt-3.5-turbo)
+    #[clap(short, long)]
+    model: Option<String>,
 }

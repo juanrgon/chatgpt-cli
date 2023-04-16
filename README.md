@@ -63,7 +63,7 @@ NOTE: The gpt-4 model is not yet available to everyone. You can join the wailist
 
 ### Increase the request timeout
 
-By default, the CLI will wait 10 seconds for a response from the API. You can increase this timeout by setting the `CHATGPT_CLI_REQUEST_TIMEOUT_SECS` environment variable:
+By default, the CLI will wait 120 seconds for a response from the API. You can increase this timeout by setting the `CHATGPT_CLI_REQUEST_TIMEOUT_SECS` environment variable:
 
 ```
 export CHATGPT_CLI_REQUEST_TIMEOUT_SECS=600

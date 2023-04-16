@@ -123,7 +123,7 @@ fn main() -> Result<(), Error> {
     let timeout_secs = env::var("CHATGPT_CLI_REQUEST_TIMEOUT_SECS")
         .ok()
         .and_then(|x| x.parse().ok())
-        .unwrap_or(10); // default value of 10 seconds
+        .unwrap_or(120); // default value of 120 seconds
     let response = client
         .post("https://api.openai.com/v1/chat/completions".to_string())
         .timeout(Duration::from_secs(timeout_secs))

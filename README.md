@@ -47,7 +47,13 @@ Your messages in each terminal window are saved to `~/.chatgpt/{OS boot time}/{t
 
 By default, the CLI uses the `gpt-3.5-turbo` model.
 
-However, you can use a different model by setting the `CHATGPT_CLI_MODEL` environment variable:
+However, you can use a different model by passing the `--model` flag:
+
+```
+chatgpt --model=gpt-4 Complete this phrase: "Ravioli ravioli, give me the..."
+```
+
+You can also change the default model by setting the `CHATGPT_CLI_MODEL` environment variable:
 
 ```
 export CHATGPT_CLI_MODEL=gpt-4

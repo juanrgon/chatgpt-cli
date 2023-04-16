@@ -114,7 +114,7 @@ fn main() -> Result<(), Error> {
     );
     headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
     let json_data = serde_json::to_string(&data)?;
-    let timeout_secs = env::var("CHATGPT_REQUEST_TIMEOUT_SECS")
+    let timeout_secs = env::var("CHATGPT_CLI_REQUEST_TIMEOUT_SECS")
         .ok()
         .and_then(|x| x.parse().ok())
         .unwrap_or(10); // default value of 10 seconds

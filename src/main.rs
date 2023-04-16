@@ -174,8 +174,9 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
+// get version from Cargo.toml
 #[derive(Parser, Debug)]
-#[clap(version = "0.2.0", author = "Juan Gonzalez <jrg2156@gmail.com>")]
+#[clap(version = env!("CARGO_PKG_VERSION"), author = "Juan Gonzalez <jrg2156@gmail.com>")]
 struct CliArgs {
     /// The prompt to send to ChatGPT
     #[clap(name = "prompt")]

@@ -44,12 +44,15 @@ fn main() -> Result<(), Error> {
         .expect("Could not find valid application path");
 
     let config_file_path = project_path.config_dir().join("config.json");
+
     if args.print_config_path {
         println!(
             "Config file is expected here: {}",
             config_file_path.to_str().expect("Could not display the config path")
         );
     };
+
+    // Read the config file. If it does not exist, create an empty config struct
     let config_file = fs::read(config_file_path).ok();
     let config_file = if let Some(config_file_path) = config_file {
         serde_json::from_slice::<Config>(&config_file_path).unwrap_or(Config::default())
@@ -57,7 +60,7 @@ fn main() -> Result<(), Error> {
         Config::default()
     };
 
-    // get OPENAI_API_KEY from environment variable
+    // get OPENAI_API_KEY from environment variable or config file
     let key = "OPENAI_API_KEY";
     let openai_api_key_env = env::var(key).ok();
     let openai_api_key = openai_api_key_env.unwrap_or_else(|| {
@@ -66,7 +69,7 @@ fn main() -> Result<(), Error> {
             .expect("No api key defined in config or env")
     });
 
-    // Get the model from the CLI argument, environment variable, or use the default value
+    // Get the model from the CLI argument, environment variable, config file, or use the default value
     let model = args
         .model
         .or_else(|| env::var("CHATGPT_CLI_MODEL").ok())
@@ -104,7 +107,7 @@ fn main() -> Result<(), Error> {
     let mut chatlog_text = String::new();
     file.read_to_string(&mut chatlog_text)?;
 
-    // get the messages from the chatlog. limit the total number of tokens to 3000
+    // get the messages from the chatlog. limit the total number of tokens to 2000
     const MAX_TOKENS: i64 = 2000;
     let mut total_tokens: i64 = 0;
     let mut messages: Vec<Message> = vec![];

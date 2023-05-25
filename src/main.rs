@@ -1,5 +1,4 @@
 use clap::Parser;
-use dirs;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use rustix::process;
@@ -7,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::time::Duration;
 use std::{
-    env,
-    fs::{self},
+    env, fs,
     io::{Error, Read},
 };
 use sys_info::boottime;
@@ -54,9 +52,8 @@ fn main() -> Result<(), Error> {
     let boot_time_since_unix_epoch = boot_time.tv_sec;
 
     // load the chatlog for this terminal window
-    let chatlog_path = dirs::home_dir()
-        .expect("Failed to get home directory")
-        .join(".chatgpt")
+    let chatlog_path = project_path
+        .data_dir()
         .join(boot_time_since_unix_epoch.to_string())
         .join(
             process::getppid()

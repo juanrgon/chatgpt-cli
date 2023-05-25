@@ -43,8 +43,15 @@ fn main() -> Result<(), Error> {
     let project_path = directories::ProjectDirs::from("com", "gitznik", "chatgpt-cli")
         .expect("Could not find valid application path");
 
-    let config_file_path = fs::read(project_path.config_dir().join("config.json")).ok();
-    let config_file = if let Some(config_file_path) = config_file_path {
+    let config_file_path = project_path.config_dir().join("config.json");
+    if args.print_config_path {
+        println!(
+            "Config file is expected here: {}",
+            config_file_path.to_str().expect("Could not display the config path")
+        );
+    };
+    let config_file = fs::read(config_file_path).ok();
+    let config_file = if let Some(config_file_path) = config_file {
         serde_json::from_slice::<Config>(&config_file_path).unwrap_or(Config::default())
     } else {
         Config::default()
@@ -204,4 +211,8 @@ struct CliArgs {
     /// The ChatGPT model to use (default: gpt-3.5-turbo)
     #[clap(short, long)]
     model: Option<String>,
+
+    /// Print where the config file is expected to be located
+    #[clap(short, long)]
+    print_config_path: bool,
 }

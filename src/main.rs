@@ -31,21 +31,43 @@ struct OpenAIRequest {
     messages: Vec<Message>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Default)]
+struct Config {
+    openai_api_key: Option<String>,
+    model: Option<String>,
+}
+
 fn main() -> Result<(), Error> {
     let args = CliArgs::parse();
 
+    let project_path = directories::ProjectDirs::from("com", "gitznik", "chatgpt-cli")
+        .expect("Could not find valid application path");
+
+    let config_file_path = fs::read(project_path.config_dir().join("config.json")).ok();
+    let config_file = if let Some(config_file_path) = config_file_path {
+        serde_json::from_slice::<Config>(&config_file_path).unwrap_or(Config::default())
+    } else {
+        Config::default()
+    };
+
     // get OPENAI_API_KEY from environment variable
     let key = "OPENAI_API_KEY";
-    let openai_api_key = env::var(key).expect(&format!("{} not set", key));
-
-    // get the prompt from the user
-    let prompt = args.prompt.join(" ");
+    let openai_api_key_env = env::var(key).ok();
+    let openai_api_key = openai_api_key_env.unwrap_or_else(|| {
+        config_file
+            .openai_api_key
+            .expect("No api key defined in config or env")
+    });
 
     // Get the model from the CLI argument, environment variable, or use the default value
     let model = args
         .model
         .or_else(|| env::var("CHATGPT_CLI_MODEL").ok())
+        .or_else(|| config_file.model)
         .unwrap_or_else(|| "gpt-3.5-turbo".to_string());
+
+    // get the prompt from the user
+    let prompt = args.prompt.join(" ");
 
     // Get the boottime of the system
     let boot_time = boottime().expect("Unable to get boot time");

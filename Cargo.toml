@@ -14,6 +14,7 @@ name = "chatgpt"
 path = "src/main.rs"
 
 [dependencies]
+bat = { version = "0.23.0", features = ["regex-fancy"] }
 clap = { version = "4.2.2", features = ["derive"] }
 directories = "5.0.1"
 reqwest = { version = "0.11", features = ["blocking", "json"] }

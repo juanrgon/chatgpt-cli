@@ -1,3 +1,4 @@
+use bat::PrettyPrinter;
 use clap::Parser;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
@@ -48,7 +49,9 @@ fn main() -> Result<(), Error> {
     if args.print_config_path {
         println!(
             "Config file is expected here: {}",
-            config_file_path.to_str().expect("Could not display the config path")
+            config_file_path
+                .to_str()
+                .expect("Could not display the config path")
         );
     };
 
@@ -182,7 +185,11 @@ fn main() -> Result<(), Error> {
         .unwrap();
 
     // Show the response from OpenAI
-    println!("{}", answer);
+    PrettyPrinter::new()
+        .input_from_bytes(answer.as_bytes())
+        .language("markdown")
+        .print()
+        .expect("Could not pretty print the input");
 
     // save the new messages to the chatlog
     chatlog.push(Log {

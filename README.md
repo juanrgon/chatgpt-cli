@@ -43,7 +43,7 @@ Your messages in each terminal window are saved to `~/.chatgpt/{OS boot time}/{t
 
 ## Settings
 
-### Use a different model like GPT-4
+### Use a different model, like GPT-4
 
 By default, the CLI uses the `gpt-3.5-turbo` model.
 

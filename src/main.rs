@@ -9,45 +9,18 @@ use std::time::Duration;
 use std::{
     env,
     fs::{self},
-    io::{Error, Read},
+    io::Read,
 };
 use sys_info::boottime;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Log {
-    role: String,
-    content: String,
-    tokens: i64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Message {
-    role: String,
-    content: String,
-}
-#[derive(Debug, Deserialize, Serialize)]
-struct OpenAIRequest {
-    #[serde(rename = "model")]
-    model: String,
-    #[serde(rename = "messages")]
-    messages: Vec<Message>,
-}
-
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
 
-    // get OPENAI_API_KEY from environment variable
-    let key = "OPENAI_API_KEY";
-    let openai_api_key = env::var(key).expect(&format!("{} not set", key));
+    // Load the config from the environment
+    let config = Config::from_env().expect("Failed to get API config");
 
     // get the prompt from the user
     let prompt = args.prompt.join(" ");
-
-    // Get the model from the CLI argument, environment variable, or use the default value
-    let model = args
-        .model
-        .or_else(|| env::var("CHATGPT_CLI_MODEL").ok())
-        .unwrap_or_else(|| "gpt-3.5-turbo".to_string());
 
     // Get the boottime of the system
     let boot_time = boottime().expect("Unable to get boot time");
@@ -78,61 +51,16 @@ fn main() -> Result<(), Error> {
     let mut chatlog_text = String::new();
     file.read_to_string(&mut chatlog_text)?;
 
-    // get the messages from the chatlog. limit the total number of tokens to 3000
-    const MAX_TOKENS: i64 = 4096;
-    let mut total_tokens: i64 = 0;
-    let mut messages: Vec<Message> = vec![];
-    let mut chatlog: Vec<Log> = vec![];
-
-    if !chatlog_text.is_empty() {
-        chatlog = serde_json::from_str(&chatlog_text)?;
-        for log in chatlog.iter().rev() {
-            if total_tokens + log.tokens > MAX_TOKENS {
-                continue;
-            }
-
-            total_tokens += log.tokens;
-            messages.push(Message {
-                role: log.role.clone(),
-                content: log.content.clone(),
-            });
-        }
-    }
-
-    messages = messages.into_iter().rev().collect();
-
-    messages.push(Message {
-        role: "user".to_string(),
-        content: prompt.clone(),
-    });
+    // get the messages from the chatlog. limit the total number of tokens
+    let messages = get_messages_from_chatlog(&chatlog_text, 4096)?;
 
     // send the POST request to OpenAI
     let client = Client::new();
     let data = OpenAIRequest {
-        model: model.to_string(),
+        model: config.model.to_string(),
         messages,
     };
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        format!("Bearer {}", openai_api_key).parse().unwrap(),
-    );
-    headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-    let json_data = serde_json::to_string(&data)?;
-    let timeout_secs = env::var("CHATGPT_CLI_REQUEST_TIMEOUT_SECS")
-        .ok()
-        .and_then(|x| x.parse().ok())
-        .unwrap_or(120); // default value of 120 seconds
-    let response = client
-        .post("https://api.openai.com/v1/chat/completions".to_string())
-        .timeout(Duration::from_secs(timeout_secs))
-        .headers(headers)
-        .body(json_data)
-        .send()
-        .unwrap()
-        .json::<serde_json::Value>()
-        .unwrap();
+    let response = send_request_to_openai(&client, data, &config)?;
 
     // if the response is an error, print it and exit
     match response["error"].as_object() {
@@ -154,6 +82,8 @@ fn main() -> Result<(), Error> {
 
     // Show the response from OpenAI
     println!("{}", answer);
+
+    let mut chatlog = vec![];
 
     // save the new messages to the chatlog
     chatlog.push(Log {
@@ -185,4 +115,76 @@ struct CliArgs {
     /// The ChatGPT model to use (default: gpt-3.5-turbo)
     #[clap(short, long)]
     model: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Log {
+    role: String,
+    content: String,
+    tokens: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Message {
+    role: String,
+    content: String,
+}
+#[derive(Debug, Deserialize, Serialize)]
+struct OpenAIRequest {
+    #[serde(rename = "model")]
+    model: String,
+    #[serde(rename = "messages")]
+    messages: Vec<Message>,
+}
+
+struct Config {
+    api_key: String,
+    model: String,
+    timeout: u64,
+}
+
+impl Config {
+    fn from_env() -> Result<Self, env::VarError> {
+        Ok(Config {
+            api_key: env::var("OPENAI_API_KEY")?,
+            model: env::var("CHATGPT_CLI_MODEL").unwrap_or_else(|_| "gpt-3.5-turbo".to_string()),
+            timeout: env::var("CHATGPT_CLI_REQUEST_TIMEOUT_SECS")
+                .ok()
+                .and_then(|x| x.parse().ok())
+                .unwrap_or(120),
+        })
+    }
+}
+
+fn get_messages_from_chatlog(chatlog_text: &str, max_tokens: i64) -> Result<Vec<Message>, serde_json::Error> {
+    let mut total_tokens = 0;
+    let mut messages = vec![];
+    if !chatlog_text.is_empty() {
+        let chatlog: Vec<Log> = serde_json::from_str(chatlog_text)?;
+        for log in chatlog.iter().rev() {
+            if total_tokens + log.tokens > max_tokens {
+                continue;
+            }
+            total_tokens += log.tokens;
+            messages.push(Message {
+                role: log.role.clone(),
+                content: log.content.clone(),
+            });
+        }
+    }
+    Ok(messages)
+}
+
+
+fn send_request_to_openai(client: &Client, data: OpenAIRequest, config: &Config) -> Result<serde_json::Value, reqwest::Error> {
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, format!("Bearer {}", config.api_key).parse().unwrap());
+    headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
+    let json_data = serde_json::to_string(&data).unwrap();
+    client.post("https://api.openai.com/v1/chat/completions")
+        .timeout(Duration::from_secs(config.timeout))
+        .headers(headers)
+        .body(json_data)
+        .send()?
+        .json()
 }
